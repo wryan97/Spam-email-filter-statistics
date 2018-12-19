@@ -1,0 +1,2 @@
+# Spam-email-filter-statistics
+This was the final project for Virginia Tech's STAT 3516 Biostatistics Class. I was tasked with creating an accurate spam filter from a dataset created by HP Labs. I went through a number of models before selecting the last one in the data based on its low AIC value. It ended up being 94.29% accurate at a 95% confidence interval. This also includes a powerpoint presentation given to the class on the problem set. The overall grade acheived was a 92%.
