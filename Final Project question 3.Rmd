@@ -1,0 +1,279 @@
+---
+title: "Final Project - Question 3"
+author: "Ryan Williams"
+date: "11/5/2018"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r read in}
+#read in statmod to be able to manipulate large datasets
+library(statmod)
+spam <- read.csv("spam.csv", header=TRUE)
+words <- spam[,c(1:48,58)]
+char <- spam[,c(49:54, 58)]
+caps <- spam[,c(55:58)]
+
+#creates boxplots between the response variable (spam) and word choice
+for(i in 1:9) {
+  par(mfrow = c(1,5))
+  for(j in 1:5) {
+    boxplot(words[,(i-1)*5 + j] ~spam$spam, main= colnames(words[(i-1)*5 + j]))
+  }
+}
+
+#creates boxplots between the response variable (spam) and character choice
+par(mfrow = c(2,3))
+for(i in 1:6) {
+  boxplot(char[,i] ~spam$spam, main = colnames(char[i]))
+}
+
+#creates boxplots between the response variable (spam) and capitalization choice
+par(mfrow = c(1,3))
+for(i in 1:3) {
+  boxplot(caps[,i] ~spam$spam, main = colnames(caps[i]))
+}
+spam2 <- spam[sample(nrow(spam),nrow(spam),replace = F), ]
+handPicked <- glm(spam ~ caps_long + w_free + w_remove + c_exclaim, binomial(link = "logit"),data = spam2)
+summary(handPicked)
+```
+It can be seen that all the boxplots have outliers but these look promising
+w_remove
+w_recieve
+w_business
+w_000
+w_your
+caps_total
+
+```{r 3}
+pairs(caps)
+pairs(char)
+library(car)
+vif(lm(spam~., data = spam2))
+```
+Multicollinearity - none of the values obtained were that high, so there was no overlap. If it was high, there would be a lot of overlap.
+
+```{r 3-1}
+cor(caps)
+```
+
+```{r 3-2}
+cor(char)
+```
+
+```{r 3-3}
+correlation <- cor(words)
+correlation
+idx <- as.data.frame(which(abs(correlation) > 0.2, arr.ind = TRUE))
+idx$colname <- colnames(correlation)[idx$col]
+idx <- idx[idx$row != idx$col,]
+idx
+#This finds the correlation between the different words
+```
+
+```{r correlation graphs of important covariates}
+par(mfrow = c(1,5))
+  plot(spam$c_dollar,spam$spam)
+  plot(spam$caps_total,spam$spam)
+  plot(spam$c_exclaim,spam$spam)
+  plot(spam$w_remove,spam$spam)
+  plot(spam$w_your,spam$spam)
+```
+
+
+```{r caps}
+#gets the glm of the caps alone
+capsGLM <- glm(spam ~ ., binomial(link = "logit"),data = caps)
+summary(capsGLM)
+#plots the studentized residuals
+studentizedcaps <-qresiduals(capsGLM)
+par(mfrow = c(1,3))
+  plot(studentizedcaps, main = "Capitals scatterplot")
+  hist(studentizedcaps, main = "Capitals histogram")
+  qqnorm(studentizedcaps, main = "Capitals QQ plot")
+  abline(a=0,b=1,col = "red")
+#D2 before .1708
+
+#clean the data
+studentizedcapsFixed <- which(abs(studentizedcaps) > 2.5)
+studentizedcapsFixed
+caps2=caps[-c(studentizedcapsFixed),]
+
+#get fixed model
+capsGLM2 <- glm(spam ~ caps_avg + caps_long, binomial(link = "logit"),data = caps2)
+summary(capsGLM2)
+
+#plot the fixed studentized residuals
+studentizedcapsFixed <-qresiduals(capsGLM2)
+par(mfrow = c(1,3))
+  plot(studentizedcapsFixed, main = "Capitals scatter plot studentized")
+  hist(studentizedcapsFixed, main = "Capitals histogram studentized")
+  qqnorm(studentizedcapsFixed, main = "Capitals QQ plot studentized")
+  abline(a=0,b=1,col = "red")
+#D2 after .231
+```
+
+```{r char}
+#gets the glm of the char alone
+charGLM <- glm(spam ~ ., binomial(link = "logit"),data = char)
+summary(charGLM)
+#plots the studentized residuals
+studentizedchar <- qresiduals(charGLM)
+par(mfrow = c(1,3))
+  plot(studentizedchar, main = "Characters scatterplot")
+  hist(studentizedchar, main = "Characters histogram")
+  qqnorm(studentizedchar, main = "Characters QQ plot")
+  abline(a=0,b=1, col = "red")
+#D2 before fix is .28965
+
+#clean the data
+studentizedcharFixed <- which(abs(studentizedchar) > 2.5)
+studentizedcharFixed
+char2 = char[-c(studentizedcharFixed),]
+
+#get fixed model
+charGLM2 <- glm(spam ~ ., binomial(link = "logit"),data = char2)
+summary(charGLM2)
+#plot the fixed studentized residuals
+studentizedchar <-qresiduals(charGLM2)
+par(mfrow = c(1,3))
+  plot(studentizedchar, main = "Characters studentized scatterplot")
+  hist(studentizedchar, main = "Characters studentized histogram")
+  qqnorm(studentizedchar, main = "Characters studentized QQ plot")
+  abline(a=0,b=1, col = "red")
+#D2 after fix is .4084
+```
+
+```{r words}
+#gets the glm of the words alone
+wordsGLM <- glm(spam ~ ., binomial(link = "logit"),data = words)
+
+#takes out the non significant values
+wordsGLMFixed <- glm(spam ~ w_address + w_all + w_our + w_over + w_remove + w_internet + w_order + w_mail + w_will + w_addresses + w_free + w_business + w_email + w_credit + w_your + w_font + w_000 + w_money + w_hp + w_hpl + w_george + w_650 + w_lab + w_data + w_technology + w_parts + w_pm + w_meeting + w_original + w_project + w_re + w_edu + w_table + w_conference,    binomial(link = "logit"),data = words)
+summary(wordsGLMFixed)
+#plot the good data
+studentizedwords <-qresiduals(wordsGLMFixed)
+par(mfrow = c(1,3))
+  plot(studentizedwords, main = "Words scatterplot")
+  hist(studentizedwords, main = "Words histogram")
+  qqnorm(studentizedwords, main = "Words QQ plot")
+  abline(a=0,b=1, col ="red")
+#D2 is .6469
+
+#clean the good data - CLEANING IT MESSED IT UP
+studentizedwordsFixed <- which(abs(studentizedwords) > 2.5)
+studentizedwordsFixed
+words2=words[-c(studentizedcharFixed),]
+
+#get the fixed model
+wordsGLMFixed2 <- glm(spam ~ w_address + w_all + w_our + w_over + w_remove + w_internet + w_order + w_mail + w_will + w_addresses + w_free + w_business + w_email + w_credit + w_your + w_font + w_000 + w_money + w_hp + w_hpl + w_george + w_650 + w_lab + w_data + w_technology + w_parts + w_pm + w_meeting + w_original + w_project + w_re + w_edu + w_table + w_conference,    binomial(link = "logit"),data = words2)
+summary(wordsGLMFixed2)
+
+studentizedwords <-rstudent(wordsGLMFixed2)
+par(mfrow = c(1,3))
+  plot(studentizedwords, main = "Words studentized scatterplot")
+  hist(studentizedwords, main = "Words studentized histogram")
+  qqnorm(studentizedwords, main = "Words studentized QQ plot")
+  abline(a=0,b=1, col="red")
+#D2 after fix is .6560
+```
+
+
+```{r combine the best data}
+#after cleaning, the best data is combined into one large model
+caps2$id <- row.names(caps2)
+char2$id <- row.names(char2)
+words2$id <- row.names(words2)
+spammid <- merge(caps2,char2,by.x = c("id"),by.y=c("id"), all.x = TRUE)
+spamfinal <- merge(spammid,words2,by.x = c("id"),by.y=c("id"), all.x = TRUE)
+spamfinalFixed=spamfinal[,-c(1,5,8, 12,16,23,29,34,37:56,58,59,60)]
+```
+
+```{r stepfuction}
+#This calculates the step function of the data along with calculating a step function of the data's interactions
+null = glm(spam~1, family = binomial(link="logit"), data = spamfinalFixed)
+full = glm(spam~., family = binomial(link="logit"), data = spamfinalFixed)
+nullinteractions = glm(spam~1, family = binomial(link="logit"), data = spamfinalFixed)
+fullinteractions = glm(spam~.^2, family = binomial(link="logit"), data = spamfinalFixed)
+spamstep = step(null, scope=list(lower = null, upper = full), direction = "forward")
+spamstepinteractions = step(nullinteractions, scope=list(lower = nullinteractions, upper = fullinteractions), direction = "forward")
+```
+
+```{r step studentized stuff}
+#took out semicolon, w-make, and c-hash
+spamstep = glm(spam ~ c_dollar + c_exclaim + w_remove + caps_long + 
+    w_your + w_000 + w_free + w_our + w_re + w_internet + w_you + 
+    w_credit + caps_avg + w_will + w_money + w_over + c_roundparen + 
+    caps_total + w_email + w_addresses, family = binomial(link = "logit"), data = spamfinalFixed)
+summary(spamstep)
+#plots the studentized residuals
+studentizedspamstep <-qresiduals(spamstep)
+par(mfrow = c(1,3))
+  plot(studentizedspamstep, main = "Spam scatterplot")
+  hist(studentizedspamstep, main = "Spam histogram")
+  qqnorm(studentizedspamstep, main = "Spam QQ plot")
+  abline(a=0,b=1, col="red")
+#.6389
+```
+
+```{r interactions}
+#took out caps long along with other variables
+spamstepinteractions = glm(formula = spam ~ c_dollar + c_exclaim + w_remove + 
+    w_your + w_free + w_re + caps_avg  + w_will + w_over + 
+    caps_total + c_exclaim:caps_long + w_our:w_you + 
+    c_exclaim:w_free + w_you:w_will + w_internet:w_you + c_exclaim:caps_avg + 
+    w_free:c_roundparen + c_dollar:c_roundparen + w_money:w_over + 
+    caps_avg:w_money + c_dollar:w_re + w_remove:w_000 + 
+    w_money:c_roundparen + w_re:w_credit + w_your:w_free + c_exclaim:caps_total + 
+    caps_avg:w_over + w_you:c_roundparen + 
+    w_remove:c_roundparen + w_your:w_you + w_000:caps_total + 
+    w_internet:caps_total + w_our:caps_total + w_re:caps_avg + 
+    caps_long:w_re + caps_long:w_money + w_internet:caps_avg + 
+    w_remove:caps_avg + w_money:caps_total + w_your:w_re + w_000:w_internet + 
+    w_your:caps_total + w_000:w_money + w_free:w_re + w_re:caps_total + 
+    w_free:caps_total + w_internet:c_roundparen + c_exclaim:w_re + 
+    caps_avg:w_will + caps_long:w_will + w_internet:c_semicolon + 
+    w_you:w_over + w_credit:w_money + w_credit:w_will + w_you:w_credit + 
+    w_free:w_credit + c_exclaim:w_remove + w_remove:w_you +  
+    w_your:w_money + c_dollar:w_free + w_remove:caps_long + 
+    caps_long:w_credit + w_credit:caps_total + c_exclaim:w_credit + 
+    c_exclaim:w_internet + caps_long:w_free + w_internet:w_credit + 
+    caps_long:w_you, family = binomial(link = "logit"), 
+    data = spamfinalFixed)
+summary(spamstepinteractions)
+#plots the studentized residuals
+studentizedspamstepinteractions <-qresiduals(spamstepinteractions)
+par(mfrow = c(1,3))
+  plot(studentizedspamstepinteractions, main = "Spam Interactions scatterplot")
+  hist(studentizedspamstepinteractions, main = "Spam Interactions histogram")
+  qqnorm(studentizedspamstepinteractions, main = "Spam Interactions QQ plot")
+  abline(a=0,b=1, col="red")
+#D2 value interactions before/after 0.7252
+
+    BIC(spamstepinteractions)
+extractAIC(spamstep)
+#2201.409
+extractAIC(spamstepinteractions)
+#1781.13
+```
+
+Best model to use is the spamstep interactions based on D2 results and on the AIC of that model being lower.
+
+```{r prediction function}
+summary(spamstepinteractions)
+n = nrow(spamfinalFixed)
+trainIndex = sample(1:n, size = round(0.8*n), replace=FALSE)
+train = spamfinalFixed[trainIndex,]
+test = spamfinalFixed[-trainIndex,]
+p <- predict(spamstepinteractions, newdata = test,type = "response")
+p[p>0.5]=1
+p[p<=0.5]=0
+tableofvalues <- table(p,spamfinalFixed[-trainIndex,"spam"])
+library(caret)
+print(confusionMatrix(tableofvalues))
+#Confusion table shows the 94% accuracy of the model at the 95% confidence interval
+```
+
